@@ -1691,3 +1691,87 @@ class TestRepeatCount(PyxformTestCase):
                 """,
             ],
         )
+
+
+class TestRepeatInstanceAttributes(PyxformTestCase):
+    """Test custom instance attributes (instance::*) on a repeat."""
+
+    def test_instance_attributes__in_first_repeat_and_template(self):
+        """Should find the custom attributes in both the repeat template and first repeat."""
+        md = """
+        | survey |
+        | | type         | name | label | instance::foo | instance::bar |
+        | | begin repeat | r1   | R1    | f1            | b1            |
+        | | text         | q1   | Q1    |               |               |
+        | | end repeat   |      |       |               |               |
+        """
+        self.assertPyxformXform(
+            md=md,
+            xml__xpath_match=[
+                """
+                /h:html/h:head/x:model/x:instance/x:test_name/x:r1[
+                  @jr:template='' and @foo='f1' and @bar='b1'
+                ]
+                """,
+                """
+                /h:html/h:head/x:model/x:instance/x:test_name/x:r1[
+                  not(@jr:template) and @foo='f1' and @bar='b1'
+                ]
+                """,
+            ],
+        )
+
+    def test_instance_attributes__reference__in_first_repeat_and_template(self):
+        """Should find custom attribute ${} references are resolved in both repeat nodes."""
+        md = """
+        | survey |
+        | | type         | name | label | instance::foo | instance::bar |
+        | | text         | q0   | Q0    |               |               |
+        | | begin repeat | r1   | R1    | ${q0}         | ${q1}         |
+        | | text         | q1   | Q1    |               |               |
+        | | end repeat   |      |       |               |               |
+        """
+        self.assertPyxformXform(
+            md=md,
+            xml__xpath_match=[
+                """
+                /h:html/h:head/x:model/x:instance/x:test_name/x:r1[
+                  @jr:template='' and @foo=' /test_name/q0 '
+                  and @bar=' /test_name/r1/q1 '
+                ]
+                """,
+                """
+                /h:html/h:head/x:model/x:instance/x:test_name/x:r1[
+                  not(@jr:template) and @foo=' /test_name/q0 '
+                  and @bar=' /test_name/r1/q1 '
+                ]
+                """,
+            ],
+        )
+
+    def test_instance_attributes__nested_repeat__in_all_templates(self):
+        """Should find the custom attributes in nested repeat templates and first repeats."""
+        md = """
+        | survey |
+        | | type         | name | label | instance::foo |
+        | | begin repeat | r1   | R1    | f1            |
+        | | begin repeat | r2   | R2    | f2            |
+        | | text         | q1   | Q1    |               |
+        | | end repeat   |      |       |               |
+        | | end repeat   |      |       |               |
+        """
+        self.assertPyxformXform(
+            md=md,
+            xml__xpath_match=[
+                """
+                /h:html/h:head/x:model/x:instance/x:test_name/x:r1[
+                  @jr:template='' and @foo='f1'
+                ]/x:r2[@jr:template='' and @foo='f2']
+                """,
+                """
+                /h:html/h:head/x:model/x:instance/x:test_name/x:r1[
+                  not(@jr:template) and @foo='f1'
+                ]/x:r2[not(@jr:template) and @foo='f2']
+                """,
+            ],
+        )

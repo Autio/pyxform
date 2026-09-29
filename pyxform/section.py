@@ -123,18 +123,21 @@ class Section(SurveyElement):
                 check_reserved=False,
             )
 
-    def xml_instance(self, survey: "Survey", **kwargs):
-        """Creates an xml representation of the section."""
-        append_template = kwargs.pop("append_template", False)
-
+    def _xml_instance_attributes(self, survey: "Survey", **kwargs) -> dict[str, str]:
+        """Get the instance node attributes, with any field references resolved."""
         attributes = {}
         attributes.update(kwargs)
         if self.instance:
             attributes.update(self.instance)
-        # Resolve field references in attributes
-        for key, value in attributes.items():
-            attributes[key] = survey.insert_xpaths(text=value, context=self)
-        result = node(self.name, **attributes)
+        return {
+            k: survey.insert_xpaths(text=v, context=self) for k, v in attributes.items()
+        }
+
+    def xml_instance(self, survey: "Survey", **kwargs):
+        """Creates an xml representation of the section."""
+        append_template = kwargs.pop("append_template", False)
+
+        result = node(self.name, **self._xml_instance_attributes(survey, **kwargs))
 
         for child in self.children:
             repeating_template = None
@@ -268,7 +271,9 @@ class RepeatingSection(Section):
             return node("group", repeat_node, ref=self.get_xpath())
 
     def xml_instance_template(self, survey: "Survey") -> DetachableElement:
-        result = node(self.name, **{"jr:template": ""})
+        result = node(
+            self.name, **self._xml_instance_attributes(survey, **{"jr:template": ""})
+        )
         from pyxform.question import Question
 
         for child in self.children:
