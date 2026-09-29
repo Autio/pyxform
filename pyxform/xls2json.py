@@ -795,6 +795,16 @@ def workbook_to_json(
                         + f" {control_type.capitalize()} has no label: {msg_dict}"
                     )
 
+                # Clients ignore 'required' on a group or repeat: it doesn't apply to
+                # the questions inside, so warn in case the user expected it to.
+                required = row.get("bind", {}).get("required")
+                if required and aliases.yes_no.get(required) is not False:
+                    warnings.append(
+                        ErrorCode.SURVEY_011.value.format(
+                            row=row_number, type=control_type
+                        )
+                    )
+
                 new_json_dict = row.copy()
                 new_json_dict[constants.TYPE] = control_type
                 child_list = []

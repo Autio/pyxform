@@ -918,3 +918,67 @@ class TestGroupInternalRepresentations(TestCase):
         expected = convert(xlsform=md, form_name="group")._survey.to_json_dict()
         observed = create_survey_element_from_dict(expected).to_json_dict()
         self.assertEqual(expected, observed)
+
+
+class TestGroupRequired(PyxformTestCase):
+    """Test 'required' on a group or repeat row."""
+
+    def test_required_on_group_or_repeat__warns(self):
+        """Should warn if 'required' is set on a group or repeat, since it has no effect."""
+        cases = (
+            ("group", "yes"),
+            ("group", "true"),
+            ("group", "TRUE()"),
+            ("group", "${q0} = 'a'"),
+            ("repeat", "yes"),
+        )
+        for control_type, required in cases:
+            with self.subTest(type=control_type, required=required):
+                self.assertPyxformXform(
+                    md=f"""
+                    | survey |
+                    | | type                  | name | label | required   |
+                    | | text                  | q0   | Q0    |            |
+                    | | begin {control_type}  | g1   | G1    | {required} |
+                    | | text                  | q1   | Q1    |            |
+                    | | end {control_type}    |      |       |            |
+                    """,
+                    warnings__contains=[
+                        ErrorCode.SURVEY_011.value.format(row=3, type=control_type)
+                    ],
+                )
+
+    def test_required_false_on_group_or_repeat__no_warning(self):
+        """Should not warn if 'required' on a group or repeat is false or empty."""
+        cases = (
+            ("group", "no"),
+            ("group", "false"),
+            ("group", "false()"),
+            ("group", ""),
+            ("repeat", "no"),
+        )
+        for control_type, required in cases:
+            with self.subTest(type=control_type, required=required):
+                self.assertPyxformXform(
+                    md=f"""
+                    | survey |
+                    | | type                  | name | label | required   |
+                    | | begin {control_type}  | g1   | G1    | {required} |
+                    | | text                  | q1   | Q1    |            |
+                    | | end {control_type}    |      |       |            |
+                    """,
+                    warnings_count=0,
+                )
+
+    def test_required_on_question_in_group__no_warning(self):
+        """Should not warn if 'required' is set on a question inside a group."""
+        self.assertPyxformXform(
+            md="""
+            | survey |
+            | | type        | name | label | required |
+            | | begin group | g1   | G1    |          |
+            | | text        | q1   | Q1    | yes      |
+            | | end group   |      |       |          |
+            """,
+            warnings_count=0,
+        )

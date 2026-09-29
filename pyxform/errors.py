@@ -578,6 +578,15 @@ class ErrorCode(Enum):
             "Move this question out of the repeat, or choose a different question type."
         ),
     )
+    SURVEY_011 = Detail(
+        name="Survey sheet - required on group or repeat",
+        msg=(
+            "[row : {row}] On the 'survey' sheet, the 'required' value has no effect. "
+            "Setting 'required' on a {type} doesn't make the questions inside it required. "
+            "Either remove the required value in this row, or set 'required' on each "
+            "question inside the {type}."
+        ),
+    )
 
 
 class PyXFormError(Exception):
